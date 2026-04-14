@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dose_view"
+version = "0.1.0"
+description = "Dose distribution visualization and comparison toolkit"
+authors = [{name = "Jungwook Shin"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "SimpleITK",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+full = [
+    "pydicom",
+    "plotly",
+    "scipy",
+]
+
+[tool.setuptools]
+packages = ["dose_view"]
+
+[project.scripts]
+dose-view = "dose_view.cli:main"
