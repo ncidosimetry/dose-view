@@ -16,8 +16,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dicom = [
+    "pydicom>=2.4",
+    "scipy",
+]
 full = [
-    "pydicom",
+    "pydicom>=2.4",
     "plotly",
     "scipy",
 ]
