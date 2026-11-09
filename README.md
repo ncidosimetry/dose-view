@@ -107,7 +107,7 @@ If a volume moved, pass a prefix map:
 
 ```bash
 dose-view preview /path/to/patient_case \
-  --path-map '{"/Volumes/mimdata1":"/mounted/mimdata1"}'
+  --path-map '{"/old/dicom":"/new/dicom"}'
 ```
 
 Output defaults to a `dose_view/` subdirectory and contains one PNG and a fresh
@@ -119,7 +119,7 @@ overrides to reproduce those details; the default shows the full CT extent.
 
 ```bash
 dose-view preview /path/to/patient_case \
-  --kwargs '{"crop_mm":{"x":[-235,235],"y":[-215,200]},"subtitle":"Selected CSI plan dose"}'
+  --kwargs '{"crop_mm":{"x":[-100,100],"y":[-100,100]},"subtitle":"Selected plan dose"}'
 ```
 
 Python usage:
@@ -158,7 +158,7 @@ patient coordinates; points outside a grid are masked. Offset interpretation
 follows [DICOM PS3.3 C.8.8.3.2](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.3.2.html).
 No registration or dose renormalization is applied; `RELATIVE` units and
 `EFFECTIVE` dose type retain their meaning. Plotting does not establish
-full-course dose coverage or accepted REDCap linkage.
+full-course dose coverage or a validated link to a clinical registry.
 
 ## Package Structure
 
@@ -202,6 +202,22 @@ dose_view/
 - `get_patient_data()` - Retrieve patient data from JSON
 - `ct_to_dose()` - Map CT to associated dose files
 - `dose_to_ct()` - Map dose files to CT
+
+Patient lookup uses exact identifiers. If an inventory uses aliases, supply an
+explicit mapping; the library does not infer study prefixes or site suffixes:
+
+```python
+from dose_view import get_patient_data
+
+entry = get_patient_data(
+    "example-alias",
+    inventory,
+    aliases={"example-alias": "example-record"},
+)
+```
+
+Existing callers that relied on automatic prefix/suffix guessing must supply
+their own alias mapping.
 
 ### `dose_view.visualization`
 - `extract_triplanar_arrays()` - Extract axial/coronal/sagittal slices

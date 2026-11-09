@@ -56,3 +56,13 @@ venv.bak/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local clinical inputs and generated preview artifacts
+data/
+outputs/
+previews/
+*.dcm
+*.dicom
+*_geometry.json
+*.geometry.json
+*_triplanar.png

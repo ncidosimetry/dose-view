@@ -21,38 +21,34 @@ dicom_json_data is expected to be a dictionary with the following structure:
 from typing import Optional, Dict, Any
 
 
-def get_patient_data(patient_id: str, dicom_json_data: Dict) -> Optional[Dict[str, Any]]:
+def get_patient_data(
+    patient_id: str,
+    dicom_json_data: Dict,
+    *,
+    aliases: Optional[Dict[str, str]] = None,
+) -> Optional[Dict[str, Any]]:
     """
-    Retrieve patient data from mim_json for a given patient ID.
+    Retrieve a DICOM inventory entry by exact ID or an explicit alias.
     
     Parameters
     ----------
     patient_id : str
         The patient ID to search for
     dicom_json_data : dict
-        The mim_json dictionary containing patient data
+        A DICOM inventory dictionary keyed by patient ID
+    aliases : dict, optional
+        Caller-supplied mapping from alternate IDs to inventory keys.
+        Exact inventory keys take precedence. No ID-format rules are inferred.
     
     Returns
     -------
     dict or None
         Patient data if found, None if not found
     """
-    # First try exact match
     if patient_id in dicom_json_data:
         return dicom_json_data[patient_id]
-    
-    # If not found, try removing protocol prefix (e.g., "002-" from "002-0002")
-    if '-' in patient_id:
-        modified_id = patient_id.split('-')[1]
-        if modified_id in dicom_json_data:
-            return dicom_json_data[modified_id]
-    
-    # If still not found, try adding common suffixes
-    for suffix in ['-002', '-001']:
-        test_id = patient_id + suffix
-        if test_id in dicom_json_data:
-            return dicom_json_data[test_id]
-    
+    if aliases is not None and patient_id in aliases:
+        return dicom_json_data.get(aliases[patient_id])
     return None
 
 
