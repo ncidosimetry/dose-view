@@ -54,6 +54,8 @@ from .visualization import (
     overlay_panel,
     save_triplanar_overlays,
 )
+from .triplanar import save_triplanar_overlay
+from .preview import plot_dose_preview
 
 # Comparison functions
 from .comparison import (
@@ -91,6 +93,8 @@ __all__ = [
     "extract_triplanar_arrays",
     "overlay_panel",
     "save_triplanar_overlays",
+    "save_triplanar_overlay",
+    "plot_dose_preview",
     # Comparison
     "extract_line_profile",
     "compare_2d_slices",
