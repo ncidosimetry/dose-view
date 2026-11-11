@@ -56,6 +56,7 @@ from .visualization import (
 )
 from .triplanar import save_triplanar_overlay
 from .preview import plot_dose_preview
+from .dvh import list_rois, calculate_dvh, save_dvh
 
 # Comparison functions
 from .comparison import (
@@ -67,6 +68,7 @@ from .comparison import (
 )
 
 __all__ = [
+    "list_rois", "calculate_dvh", "save_dvh",
     # I/O
     "read_ct_any",
     "read_rtdose_file",

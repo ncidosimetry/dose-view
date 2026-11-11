@@ -160,6 +160,85 @@ No registration or dose renormalization is applied; `RELATIVE` units and
 `EFFECTIVE` dose type retain their meaning. Plotting does not establish
 full-course dose coverage or a validated link to a clinical registry.
 
+## Dose–volume histograms
+
+Install the DICOM extras (`pip install -e '.[dicom]'`) and explicitly select
+ROI numbers or exact names. Discover them with `dose_view.list_rois(rtstruct_path)`.
+The calculation uses the same patient-coordinate geometry and DICOM reference
+checks as the triplanar renderer.
+
+```python
+from dose_view import list_rois, calculate_dvh, save_dvh
+
+print(list_rois("/data/RTSTRUCT.dcm"))
+report = save_dvh(
+    ct_path="/data/CT",
+    rtdose_path="/data/RTDOSE.dcm",
+    rtstruct_path="/data/RTSTRUCT.dcm",
+    rtplan_path="/data/RTPLAN.dcm",
+    output_path="/workspace/runs/target_dvh.png",
+    roi_numbers=[1],
+    in_plane_subsamples=4,
+    v_doses_gy=[24],
+)
+# calculate_dvh accepts the same calculation arguments and returns a dict
+# without writing files. save_dvh adds PNG, .dvh.json and .dvh.csv outputs.
+```
+
+```bash
+dose-view dvh --ct /data/CT --dose /data/RTDOSE.dcm \
+  --struct /data/RTSTRUCT.dcm --plan /data/RTPLAN.dcm \
+  --roi-number 1 --subsamples 4 --v-dose 24 \
+  --output /workspace/runs/target_dvh.png
+```
+
+Outputs include cumulative curves in cc and percent, sampled ROI volume, dose
+coverage, Dmin/Dmax/Dmean, D2/D50/D95/D98, and requested V-dose values. Dp is the
+greatest sampled dose received by at least p% of equally weighted samples;
+V-dose includes samples exactly at the threshold. Metrics use the samples
+directly, so changing histogram bin width does not change Dp. Existing outputs
+are refused. JSON includes input RTDOSE/RTSTRUCT/RTPLAN hashes, CT instance
+UIDs and geometry, sampling settings, checks, and limitations. These files
+contain patient identifiers and local source paths; keep them in the study's
+private run directory.
+
+This is a **recalculated CT-slab approximation**, not an imported TPS DVH.
+Each contour-bearing CT plane represents one full slice-spacing slab; dose is
+sampled at that plane's in-plane subpixel centres, with trilinear interpolation
+of the native dose grid. There is no contour interpolation or through-plane
+supersampling. Uncontoured planes remain empty, and gaps within ROI extents
+are reported. Increase `in_plane_subsamples` (1–8 per pixel dimension) to check
+in-plane convergence, especially for small targets; this does not resolve
+through-plane discretization uncertainty.
+
+Supported inputs are conventional, uniformly spaced CT slices and matching
+patient/study/frame identities. Contours must lie on those CT planes within
+0.01 mm and stay inside the CT pixel field of view; supplied contour image
+references must match the plane. Oblique orientations, descending/nonuniform
+RTDOSE frame offsets, and explicit CT-series selection are supported. Closed
+polygons use even-odd filling (including keyholes); separate CLOSED_PLANAR
+polygons are unioned, while CLOSEDPLANAR_XOR polygons are combined by XOR.
+These types cannot be mixed within an ROI. See the
+[DICOM ROI contour definitions](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.6.html)
+and [inner/outer contour conventions](https://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.6.3.html).
+Open/point contours, explicit slab/offset attributes, source-pixel-plane
+characteristics, and contours on a different image geometry are rejected.
+
+Samples outside the dose interpolation domain **are never assigned zero**.
+By default any uncovered sample fails the calculation. Explicit
+`allow_partial=True` / `--allow-partial` exports a labelled covered-only curve,
+coverage fraction, and `covered_metrics`; whole-ROI `metrics` is null.
+Coverage describes sampled centres, not every point within the CT slabs.
+All curve percentages use covered volume as their denominator.
+
+Dose must be in GY with PHYSICAL or EFFECTIVE DoseType; the type and
+DoseSummationType remain explicit. No RBE conversion, dose summation,
+renormalization, registration, or delivery inference is performed. Supplying
+an RTPLAN enables the dose→plan→structure checks; otherwise the report marks
+that chain as unchecked. DVH results do not resolve prescription discrepancies
+or accept a REDCap linkage automatically. Validate against a trusted TPS DVH
+before clinical use.
+
 ## Package Structure
 
 ```
@@ -171,6 +250,7 @@ dose_view/
 ├── visualization.py      # Triplanar visualization
 ├── triplanar.py          # Patient-coordinate preview renderer
 ├── preview.py            # Geometry sidecar / directory input
+├── dvh.py                # Recalculated ROI DVHs, metrics and exports
 └── cli.py               # Command-line interface
 ```
 

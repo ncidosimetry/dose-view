@@ -99,7 +99,7 @@ def _check_identity(reference, other, label):
                  f'{label}: missing or different {key}; an unregistered overlay is not allowed.')
 
 
-def _read_dose(path):
+def _read_dose(path, *, allow_zero=False):
     import pydicom
     ds = pydicom.dcmread(path)
     _require(ds.get('Modality') == 'RTDOSE', 'rtdose_path must identify an RTDOSE DICOM file.')
@@ -109,7 +109,7 @@ def _read_dose(path):
     _require(ds.get('DoseUnits') in ('GY', 'RELATIVE'), 'Supported DoseUnits are GY and RELATIVE.')
     data = ds.pixel_array.astype(np.float32) * scaling
     _require(data.ndim == 3, 'RTDOSE must be a multi-frame dose volume.')
-    _require(np.isfinite(data).all() and data.min() >= 0 and data.max() > 0,
+    _require(np.isfinite(data).all() and data.min() >= 0 and (allow_zero or data.max() > 0),
              'RTDOSE must contain finite, nonnegative values and some positive dose.')
     origin, basis, spacing = _geometry(ds)
     offsets = np.asarray(ds.get('GridFrameOffsetVector', []), dtype=float)
@@ -193,6 +193,7 @@ def _read_ct(path, dose, series_uid, workers):
         data = np.stack(list(pool.map(pixels, headers)))
     _require(np.isfinite(data).all(), 'Rescaled CT values must be finite.')
     metadata = dict(_identity(first), path=str(path.resolve()), slice_count=len(headers))
+    metadata['slice_sop_instance_uids'] = [str(ds.SOPInstanceUID) for _, ds in headers]
     metadata.pop('SOPInstanceUID')  # This volume has a series UID, not a single SOP UID.
     return _Volume(data, origin, basis, *spacing, offsets, metadata), sop_uids
 

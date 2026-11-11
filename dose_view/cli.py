@@ -3,7 +3,7 @@ import json
 import inspect
 import sys
 
-from dose_view import io, patient, visualization, comparison, triplanar, preview
+from dose_view import io, patient, visualization, comparison, triplanar, preview, dvh
 
 
 def list_functions():
@@ -15,6 +15,7 @@ def list_functions():
         'comparison': comparison,
         'triplanar': triplanar,
         'preview': preview,
+        'dvh': dvh,
     }
     
     public = []
@@ -50,8 +51,38 @@ def _preview_main(argv):
     print(json.dumps([{"figure": r["figure"], "geometry_report": r["geometry_report"]} for r in reports], indent=2))
 
 
+def _dvh_main(argv):
+    parser = argparse.ArgumentParser(prog="dose-view dvh", description="Recalculate selected ROI DVHs; export PNG, JSON and CSV.")
+    parser.add_argument("--ct", required=True, help="Conventional DICOM CT directory")
+    parser.add_argument("--dose", required=True, help="RTDOSE file (GY units)")
+    parser.add_argument("--struct", required=True, help="RTSTRUCT file")
+    parser.add_argument("--plan", help="RTPLAN file for reference-chain validation")
+    parser.add_argument("--ct-series-uid")
+    parser.add_argument("--roi-number", action="append", type=int, help="Repeat for each ROI")
+    parser.add_argument("--roi-name", action="append", help="Exact ROI name; repeat for each ROI")
+    parser.add_argument("--output", required=True, help="New PNG path; also creates .dvh.json and .dvh.csv")
+    parser.add_argument("--subsamples", type=int, default=2, help="In-plane samples per pixel dimension (1–8)")
+    parser.add_argument("--bin-width", type=float, default=0.1, help="DVH dose threshold spacing in Gy")
+    parser.add_argument("--v-dose", action="append", type=float, help="Report volume receiving at least this dose (Gy)")
+    parser.add_argument("--allow-partial", action="store_true", help="Export clearly labelled covered-only results")
+    args = parser.parse_args(argv)
+    try:
+        report = dvh.save_dvh(
+            args.ct, args.dose, args.struct, args.output, rtplan_path=args.plan,
+            ct_series_uid=args.ct_series_uid, roi_numbers=args.roi_number, roi_names=args.roi_name,
+            in_plane_subsamples=args.subsamples, bin_width_gy=args.bin_width,
+            v_doses_gy=args.v_dose, allow_partial=args.allow_partial)
+    except (OSError, ValueError, TypeError, ImportError) as error:
+        parser.exit(2, f"dose-view dvh: {error}\n")
+    print(json.dumps({'outputs': report['outputs'],
+                      'rois': [{k:r[k] for k in ('number','name','coverage','coverage_pct','metrics')}
+                               for r in report['rois']]}, indent=2))
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "dvh":
+        return _dvh_main(argv[1:])
     if argv and argv[0] == "preview":
         return _preview_main(argv[1:])
     parser = argparse.ArgumentParser(
@@ -83,6 +114,7 @@ def main(argv=None):
         'comparison': comparison,
         'triplanar': triplanar,
         'preview': preview,
+        'dvh': dvh,
     }
     
     if module_name not in modules:
